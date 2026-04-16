@@ -3,86 +3,166 @@
 <head>
   <meta charset="UTF-8" />
   <title>因数分解トレーニング</title>
+
+  <!-- MathJax -->
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
   <style>
     body {
       margin: 0;
       font-family: sans-serif;
-      background: #f3f4f6;
+      background: linear-gradient(135deg, #e0f2fe, #f8fafc);
       color: #111827;
       display: flex;
       justify-content: center;
       align-items: center;
       height: 100vh;
     }
+
     .card {
       background: white;
-      padding: 24px;
-      border-radius: 16px;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-      width: 360px;
+      padding: 28px;
+      border-radius: 20px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.08);
+      width: 400px;
+      position: relative;
     }
-    h1, h2 { text-align: center; }
-    button {
-      width: 100%; padding: 10px; margin-top: 10px;
-      border: none; border-radius: 8px; cursor: pointer;
-      font-size: 14px; color: white;
-    }
-    .btn-blue { background: #3b82f6; }
-    .btn-purple { background: #8b5cf6; }
-    .btn-green { background: #22c55e; }
-    .btn-gray { background: #6b7280; }
+
+    h1, h2 { text-align: center; margin-bottom: 16px; }
+
     .question {
-      background: #f3f4f6; padding: 10px;
-      border-radius: 8px; text-align: center;
-      margin: 10px 0; font-family: monospace; font-size: 18px;
+      background: #f1f5f9;
+      padding: 14px;
+      border-radius: 10px;
+      text-align: center;
+      margin: 14px 0;
+      font-size: 22px;
     }
+
     input {
-      width: 100%; padding: 8px; border-radius: 8px;
-      border: 1px solid #ccc; margin-top: 10px; font-size: 14px;
+      width: 36px;
+      padding: 4px;
+      border-radius: 6px;
+      border: 1px solid #cbd5e1;
+      margin: 3px;
+      text-align: center;
+      font-size: 14px;
     }
-    .result { text-align: center; margin-top: 10px; font-weight: bold; }
+
+    .result {
+      text-align: center;
+      margin-top: 10px;
+      font-weight: bold;
+    }
+
+    .mark-item {
+      font-size: 13px;
+      padding: 6px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    /* === ボタンデザイン === */
+    a.btn_23 {
+      display: block;
+      text-align: center;
+      text-decoration: none;
+      width: 250px;
+      margin: 10px auto;
+      padding: 0.6rem 0;
+      font-weight: bold;
+      border: 2px solid #27acd9;
+      color: #27acd9;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      z-index: 1;
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    /* サブボタン（次・ホーム） */
+    a.btn_sub {
+      border-color: #94a3b8;
+      color: #64748b;
+    }
+    a.btn_sub::before {
+      background-color: #94a3b8;
+    }
+
+    /* 小さいマークボタン */
+    .mark-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      margin: 0;
+      width: auto;
+      display: inline-block;
+      padding: 4px 10px;
+      font-size: 12px;
+      border-radius: 6px;
+    }
+    a.btn_23::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgb(39, 172, 217);
+      transform: translateX(-100%);
+      transition: all .3s;
+      z-index: -1;
+    }
+    a.btn_23:hover::before {
+      transform: translateX(0);
+    }
+    a.btn_23:hover {
+      color: #fff;
+    }
   </style>
 </head>
 <body>
   <div class="card" id="app"></div>
 
   <script>
-    // IMPORTANT FIX:
-    // Some environments (like TSX/React) try to parse this file as TypeScript.
-    // This is PURE HTML. It must be saved as `.html` and opened directly in browser.
-
-    let state = { page: 'home', question: null, level: 1 };
+    let state = { page: 'home', question: null, level: 1, marks: [] };
 
     function rand(min, max) {
       return Math.floor(Math.random() * (max - min + 1)) + min;
     }
 
-    // Normalize user input: allow implicit multiplication like (x+2)(x+3)
-    function normalize(expr) {
-      return expr
-        .replace(/\^/g, "**")
-        .replace(/(\))(\()/g, '$1*$2')   // (x+2)(x+3) -> (x+2)*(x+3)
-        .replace(/(\d)x/g, '$1*x')       // 2x -> 2*x
-        .replace(/x(\d)/g, 'x*$1');      // x2 -> x*2 (just in case)
+    function formatPoly(a2, a1, a0) {
+      let parts = [];
+
+      if (a2 !== 0) {
+        if (a2 === 1) parts.push("x^2");
+        else if (a2 === -1) parts.push("-x^2");
+        else parts.push(`${a2}x^2`);
+      }
+
+      if (a1 !== 0) {
+        const sign = a1 > 0 && parts.length > 0 ? "+" : "";
+        let coef = Math.abs(a1) === 1 ? "x" : `${Math.abs(a1)}x`;
+        parts.push(`${sign}${a1 < 0 ? "-" : ""}${coef}`);
+      }
+
+      if (a0 !== 0) {
+        const sign = a0 > 0 && parts.length > 0 ? "+" : "";
+        parts.push(`${sign}${a0}`);
+      }
+
+      return parts.join(" ") || "0";
     }
 
-    function expand(expr) {
-      try {
-        const safe = normalize(expr);
-        const f = new Function("x", "return " + safe);
-        return [f(1), f(2), f(3)];
-      } catch (e) {
-        return null;
-      }
+    function toLatex(expr) {
+      return expr.replace(/x\^2/g, "x^{2}");
     }
 
     function generateQ1() {
       const a = rand(-5,5);
       const b = rand(-5,5);
-      state.question = {
-        text: `x^2 + ${a+b}x + ${a*b}`,
-        check: `(x+${a})*(x+${b})`
-      };
+      const text = formatPoly(1, a+b, a*b);
+      state.question = { a, b, text: `\\(${toLatex(text)}\\)`, raw: text, level:1 };
     }
 
     function generateQ2() {
@@ -90,10 +170,8 @@
       const b = rand(-5,5);
       const c = rand(-5,5);
       const d = rand(-5,5);
-      state.question = {
-        text: `${a*c}x^2 + ${(a*d + b*c)}x + ${b*d}`,
-        check: `(${a}*x+${b})*(${c}*x+${d})`
-      };
+      const text = formatPoly(a*c, a*d + b*c, b*d);
+      state.question = { a, b, c, d, text: `\\(${toLatex(text)}\\)`, raw: text, level:2 };
     }
 
     function render() {
@@ -102,20 +180,56 @@
       if (state.page === 'home') {
         app.innerHTML = `
           <h1>因数分解トレーニング</h1>
-          <button class="btn-blue" onclick="start(1)">難易度1</button>
-          <button class="btn-purple" onclick="start(2)">難易度2</button>
+          <a class="btn_23" href="javascript:start(1)">難易度1</a>
+          <a class="btn_23" href="javascript:start(2)">難易度2</a>
+          <a class="btn_23" href="javascript:openMarks()">マーク一覧</a>
         `;
-      } else {
+      } 
+      else if (state.page === 'marks') {
         app.innerHTML = `
-          <h2>問題</h2>
-          <div class="question">${state.question.text}</div>
-          <input id="answer" placeholder="例: (x+2)(x+3)">
-          <button class="btn-green" onclick="check()">回答</button>
-          <div id="result" class="result"></div>
-          <button class="btn-gray" onclick="next()">次の問題</button>
-          <button class="btn-gray" onclick="home()">ホームへ</button>
+          <h2>マークした問題</h2>
+          <div id="markList"></div>
+          <a class="btn_23 btn_sub" href="javascript:home()">ホームへ</a>
         `;
+
+        const list = document.getElementById("markList");
+        list.innerHTML = state.marks.length === 0
+          ? "なし"
+          : state.marks.map(m => `<div class='mark-item'>${m}</div>`).join("");
       }
+      else {
+        if (state.level === 1) {
+          app.innerHTML = `
+            <h2>問題</h2>
+            <div class="question">${state.question.text}</div>
+            <div style="text-align:center">
+              (x + <input id="a">)(x + <input id="b">)
+            </div>
+            <a class="btn_23" href="javascript:check()">回答</a>
+            <a class="btn_23" href="javascript:mark()">マーク</a>
+            
+            <div id="result" class="result"></div>
+            <a class="btn_23 btn_sub" href="javascript:next()">次の問題</a>
+            <a class="btn_23 btn_sub" href="javascript:home()">ホームへ</a>
+          `;
+        } else {
+          app.innerHTML = `
+            <h2>問題</h2>
+            <div class="question">${state.question.text}</div>
+            <div style="text-align:center">
+              (<input id="a">x + <input id="b">)(<input id="c">x + <input id="d">)
+            </div>
+            <a class="btn_23" href="javascript:check()">回答</a>
+            <a class="btn_23" href="javascript:mark()">マーク</a>
+            
+            <div id="result" class="result"></div>
+            <a class="btn_23 btn_sub" href="javascript:next()">次の問題</a>
+            <a class="btn_23 btn_sub" href="javascript:home()">ホームへ</a>
+          `;
+        }
+      }
+
+      if (window.MathJax) MathJax.typesetPromise();
     }
 
     function start(level) {
@@ -135,37 +249,48 @@
       render();
     }
 
+    function openMarks() {
+      state.page = 'marks';
+      render();
+    }
+
+    function mark() {
+      state.marks.push(state.question.raw);
+      alert("マークしました");
+    }
+
     function check() {
-      const input = document.getElementById("answer").value;
-      const user = expand(input);
-      const correct = expand(state.question.check);
       const resultEl = document.getElementById("result");
 
-      if (!user || !correct) {
-        resultEl.textContent = "入力エラー";
-        resultEl.style.color = "black";
-        return;
-      }
-
-      if (JSON.stringify(user) === JSON.stringify(correct)) {
-        resultEl.textContent = "正解";
-        resultEl.style.color = "green";
+      if (state.level === 1) {
+        const a = Number(document.getElementById("a").value);
+        const b = Number(document.getElementById("b").value);
+        if ((a === state.question.a && b === state.question.b) || (a === state.question.b && b === state.question.a)) {
+          resultEl.textContent = "正解";
+          resultEl.style.color = "green";
+        } else {
+          resultEl.textContent = "不正解";
+          resultEl.style.color = "red";
+        }
       } else {
-        resultEl.textContent = "不正解";
-        resultEl.style.color = "red";
+        const a = Number(document.getElementById("a").value);
+        const b = Number(document.getElementById("b").value);
+        const c = Number(document.getElementById("c").value);
+        const d = Number(document.getElementById("d").value);
+
+        const ok1 = (a === state.question.a && b === state.question.b && c === state.question.c && d === state.question.d);
+        const ok2 = (a === state.question.c && b === state.question.d && c === state.question.a && d === state.question.b);
+
+        if (ok1 || ok2) {
+          resultEl.textContent = "正解";
+          resultEl.style.color = "green";
+        } else {
+          resultEl.textContent = "不正解";
+          resultEl.style.color = "red";
+        }
       }
     }
 
-    // --- BASIC TEST CASES (console only) ---
-    function runTests() {
-      console.log("TEST START");
-      console.assert(JSON.stringify(expand("(x+2)(x+3)")) === JSON.stringify(expand("(x+2)*(x+3)")), "implicit multiply failed");
-      console.assert(JSON.stringify(expand("(2x+3)(x+1)")) === JSON.stringify(expand("(2*x+3)*(x+1)")), "2x handling failed");
-      console.assert(expand("invalid") === null, "invalid input should return null");
-      console.log("TEST END");
-    }
-
-    runTests();
     render();
   </script>
 </body>
