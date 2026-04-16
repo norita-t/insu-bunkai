@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>因数分解トレーニング</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: sans-serif;
+      background: #f3f4f6;
+      color: #111827;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    .card {
+      background: white;
+      padding: 24px;
+      border-radius: 16px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+      width: 360px;
+    }
+    h1, h2 { text-align: center; }
+    button {
+      width: 100%; padding: 10px; margin-top: 10px;
+      border: none; border-radius: 8px; cursor: pointer;
+      font-size: 14px; color: white;
+    }
+    .btn-blue { background: #3b82f6; }
+    .btn-purple { background: #8b5cf6; }
+    .btn-green { background: #22c55e; }
+    .btn-gray { background: #6b7280; }
+    .question {
+      background: #f3f4f6; padding: 10px;
+      border-radius: 8px; text-align: center;
+      margin: 10px 0; font-family: monospace; font-size: 18px;
+    }
+    input {
+      width: 100%; padding: 8px; border-radius: 8px;
+      border: 1px solid #ccc; margin-top: 10px; font-size: 14px;
+    }
+    .result { text-align: center; margin-top: 10px; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div class="card" id="app"></div>
+
+  <script>
+    // IMPORTANT FIX:
+    // Some environments (like TSX/React) try to parse this file as TypeScript.
+    // This is PURE HTML. It must be saved as `.html` and opened directly in browser.
+
+    let state = { page: 'home', question: null, level: 1 };
+
+    function rand(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    // Normalize user input: allow implicit multiplication like (x+2)(x+3)
+    function normalize(expr) {
+      return expr
+        .replace(/\^/g, "**")
+        .replace(/(\))(\()/g, '$1*$2')   // (x+2)(x+3) -> (x+2)*(x+3)
+        .replace(/(\d)x/g, '$1*x')       // 2x -> 2*x
+        .replace(/x(\d)/g, 'x*$1');      // x2 -> x*2 (just in case)
+    }
+
+    function expand(expr) {
+      try {
+        const safe = normalize(expr);
+        const f = new Function("x", "return " + safe);
+        return [f(1), f(2), f(3)];
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function generateQ1() {
+      const a = rand(-5,5);
+      const b = rand(-5,5);
+      state.question = {
+        text: `x^2 + ${a+b}x + ${a*b}`,
+        check: `(x+${a})*(x+${b})`
+      };
+    }
+
+    function generateQ2() {
+      const a = rand(-5,5);
+      const b = rand(-5,5);
+      const c = rand(-5,5);
+      const d = rand(-5,5);
+      state.question = {
+        text: `${a*c}x^2 + ${(a*d + b*c)}x + ${b*d}`,
+        check: `(${a}*x+${b})*(${c}*x+${d})`
+      };
+    }
+
+    function render() {
+      const app = document.getElementById("app");
+
+      if (state.page === 'home') {
+        app.innerHTML = `
+          <h1>因数分解トレーニング</h1>
+          <button class="btn-blue" onclick="start(1)">難易度1</button>
+          <button class="btn-purple" onclick="start(2)">難易度2</button>
+        `;
+      } else {
+        app.innerHTML = `
+          <h2>問題</h2>
+          <div class="question">${state.question.text}</div>
+          <input id="answer" placeholder="例: (x+2)(x+3)">
+          <button class="btn-green" onclick="check()">回答</button>
+          <div id="result" class="result"></div>
+          <button class="btn-gray" onclick="next()">次の問題</button>
+          <button class="btn-gray" onclick="home()">ホームへ</button>
+        `;
+      }
+    }
+
+    function start(level) {
+      state.page = 'q';
+      state.level = level;
+      level === 1 ? generateQ1() : generateQ2();
+      render();
+    }
+
+    function next() {
+      state.level === 1 ? generateQ1() : generateQ2();
+      render();
+    }
+
+    function home() {
+      state.page = 'home';
+      render();
+    }
+
+    function check() {
+      const input = document.getElementById("answer").value;
+      const user = expand(input);
+      const correct = expand(state.question.check);
+      const resultEl = document.getElementById("result");
+
+      if (!user || !correct) {
+        resultEl.textContent = "入力エラー";
+        resultEl.style.color = "black";
+        return;
+      }
+
+      if (JSON.stringify(user) === JSON.stringify(correct)) {
+        resultEl.textContent = "正解";
+        resultEl.style.color = "green";
+      } else {
+        resultEl.textContent = "不正解";
+        resultEl.style.color = "red";
+      }
+    }
+
+    // --- BASIC TEST CASES (console only) ---
+    function runTests() {
+      console.log("TEST START");
+      console.assert(JSON.stringify(expand("(x+2)(x+3)")) === JSON.stringify(expand("(x+2)*(x+3)")), "implicit multiply failed");
+      console.assert(JSON.stringify(expand("(2x+3)(x+1)")) === JSON.stringify(expand("(2*x+3)*(x+1)")), "2x handling failed");
+      console.assert(expand("invalid") === null, "invalid input should return null");
+      console.log("TEST END");
+    }
+
+    runTests();
+    render();
+  </script>
+</body>
+</html>
